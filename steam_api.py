@@ -129,6 +129,13 @@ class SteamAPI:
             name = player_ach['apiname']
             schema = schema_dict.get(name, {})
 
+            # Ensure global_percent is always a float
+            raw_percent = global_dict.get(name, 0)
+            try:
+                global_percent = float(raw_percent) if raw_percent is not None else 0.0
+            except (ValueError, TypeError):
+                global_percent = 0.0
+
             achievement = {
                 'apiname': name,
                 'achieved': player_ach.get('achieved', 0) == 1,
@@ -138,7 +145,7 @@ class SteamAPI:
                 'icon': schema.get('icon', ''),
                 'icongray': schema.get('icongray', ''),
                 'hidden': schema.get('hidden', 0) == 1,
-                'global_percent': global_dict.get(name, 0)
+                'global_percent': global_percent
             }
 
             merged.append(achievement)
