@@ -1,0 +1,394 @@
+/* Steam Achievement Tracker - Custom Styles */
+
+/* Color Palette */
+:root {
+    --steam-dark-bg: #171a21;
+    --steam-primary: #1b2838;
+    --steam-secondary: #66c0f4;
+    --steam-tertiary: #2a475e;
+    --steam-text: #c7d5e0;
+    --steam-muted: #8f98a0;
+    --steam-success: #5cb85c;
+    --steam-warning: #f0ad4e;
+}
+
+/* Global Styles */
+body {
+    background-color: var(--steam-dark-bg);
+    color: var(--steam-text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.bg-dark {
+    background-color: var(--steam-primary) !important;
+}
+
+.text-primary {
+    color: var(--steam-secondary) !important;
+}
+
+.text-muted {
+    color: var(--steam-muted) !important;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--steam-secondary) !important;
+}
+
+.navbar-brand:hover {
+    color: #fff !important;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: var(--steam-text);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--steam-secondary);
+}
+
+/* Steam Login Button */
+.btn-steam {
+    background-color: #000;
+    color: #fff;
+    border: 2px solid var(--steam-secondary);
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-steam:hover {
+    background-color: var(--steam-secondary);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 192, 244, 0.3);
+}
+
+/* Cards */
+.card {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    border-color: var(--steam-secondary);
+}
+
+/* Game Cards */
+.game-card {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.game-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(102, 192, 244, 0.2);
+    border-color: var(--steam-secondary);
+}
+
+.game-card img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 460 / 215;
+    object-fit: cover;
+}
+
+.game-card .card-body {
+    padding: 1rem;
+}
+
+.game-card .card-title {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--steam-text);
+    margin-bottom: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.game-playtime {
+    font-size: 0.85rem;
+    color: var(--steam-muted);
+}
+
+/* Achievement Cards */
+.achievement-card {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.achievement-card:hover {
+    background-color: var(--steam-tertiary);
+    border-color: var(--steam-secondary);
+}
+
+.achievement-card.locked {
+    opacity: 0.7;
+}
+
+.achievement-card.unlocked {
+    border-left: 4px solid var(--steam-success);
+}
+
+.achievement-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 4px;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.achievement-icon.grayscale {
+    filter: grayscale(100%);
+}
+
+.achievement-content {
+    flex-grow: 1;
+}
+
+.achievement-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--steam-text);
+    margin-bottom: 0.25rem;
+}
+
+.achievement-description {
+    font-size: 0.9rem;
+    color: var(--steam-muted);
+    margin-bottom: 0.5rem;
+}
+
+.achievement-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+}
+
+.achievement-meta span {
+    color: var(--steam-muted);
+}
+
+.unlock-date {
+    color: var(--steam-success);
+}
+
+.global-percent {
+    color: var(--steam-secondary);
+}
+
+/* Stats Cards */
+.stat-card {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.stat-card h4 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card p {
+    margin-bottom: 0;
+}
+
+/* Progress Bar */
+.progress {
+    background-color: var(--steam-tertiary);
+    border-radius: 12px;
+}
+
+.progress-bar {
+    border-radius: 12px;
+    transition: width 0.6s ease;
+}
+
+/* Guide List */
+.guide-item {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.guide-item:hover {
+    background-color: var(--steam-tertiary);
+    border-color: var(--steam-secondary);
+}
+
+.guide-source-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+.source-steam {
+    background-color: #1b2838;
+    color: var(--steam-secondary);
+}
+
+.source-youtube {
+    background-color: #ff0000;
+    color: #fff;
+}
+
+.source-reddit {
+    background-color: #ff4500;
+    color: #fff;
+}
+
+.source-wiki {
+    background-color: #006699;
+    color: #fff;
+}
+
+.source-article {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+/* Buttons */
+.btn-outline-primary {
+    border-color: var(--steam-secondary);
+    color: var(--steam-secondary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--steam-secondary);
+    color: #000;
+}
+
+.btn-outline-secondary {
+    border-color: var(--steam-tertiary);
+    color: var(--steam-text);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--steam-tertiary);
+    color: var(--steam-text);
+}
+
+.btn-outline-success {
+    border-color: var(--steam-success);
+    color: var(--steam-success);
+}
+
+.btn-outline-warning {
+    border-color: var(--steam-warning);
+    color: var(--steam-warning);
+}
+
+/* Forms */
+.form-control {
+    background-color: var(--steam-primary);
+    border-color: var(--steam-tertiary);
+    color: var(--steam-text);
+}
+
+.form-control:focus {
+    background-color: var(--steam-primary);
+    border-color: var(--steam-secondary);
+    color: var(--steam-text);
+    box-shadow: 0 0 0 0.2rem rgba(102, 192, 244, 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--steam-muted);
+}
+
+/* Modal */
+.modal-content {
+    background-color: var(--steam-primary);
+    border: 1px solid var(--steam-tertiary);
+}
+
+.modal-header {
+    border-bottom-color: var(--steam-tertiary);
+}
+
+.modal-footer {
+    border-top-color: var(--steam-tertiary);
+}
+
+/* Footer */
+.footer {
+    background-color: var(--steam-primary);
+    border-top: 1px solid var(--steam-tertiary);
+    margin-top: auto;
+}
+
+/* Loading State */
+.spinner-border {
+    color: var(--steam-secondary);
+}
+
+/* Utilities */
+.d-none {
+    display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .achievement-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .achievement-icon {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+
+    .achievement-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .game-card .card-title {
+        font-size: 0.9rem;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--steam-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--steam-tertiary);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--steam-secondary);
+}

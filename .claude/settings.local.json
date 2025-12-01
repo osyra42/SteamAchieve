@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flask:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

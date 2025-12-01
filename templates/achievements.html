@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Achievements - SteamAchieve{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary mb-3">
+                <i class="fas fa-arrow-left"></i> Back to Games
+            </a>
+            <h2 id="gameName"><i class="fas fa-trophy"></i> Achievements</h2>
+            <div id="achievementStats" class="d-none">
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h4 id="totalAchievements">0</h4>
+                            <p class="text-muted">Total</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h4 id="unlockedAchievements" class="text-success">0</h4>
+                            <p class="text-muted">Unlocked</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h4 id="lockedAchievements" class="text-warning">0</h4>
+                            <p class="text-muted">Locked</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <h4 id="completionPercent">0%</h4>
+                            <p class="text-muted">Completion</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress mt-3" style="height: 25px;">
+                    <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%">0%</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group mb-3" role="group">
+                <input type="radio" class="btn-check" name="filterAchievements" id="filterAll" value="all" checked>
+                <label class="btn btn-outline-primary" for="filterAll">All</label>
+
+                <input type="radio" class="btn-check" name="filterAchievements" id="filterLocked" value="locked">
+                <label class="btn btn-outline-warning" for="filterLocked">Locked</label>
+
+                <input type="radio" class="btn-check" name="filterAchievements" id="filterUnlocked" value="unlocked">
+                <label class="btn btn-outline-success" for="filterUnlocked">Unlocked</label>
+            </div>
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchAchievements" placeholder="Search achievements...">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingAchievements" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Loading achievements...</p>
+    </div>
+
+    <div id="errorMessage" class="alert alert-danger d-none" role="alert"></div>
+
+    <div id="achievementsContainer">
+        <!-- Achievement cards will be inserted here by JavaScript -->
+    </div>
+
+    <div id="noAchievements" class="text-center my-5 d-none">
+        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+        <p class="text-muted">No achievements found</p>
+    </div>
+</div>
+
+<!-- Guide Modal -->
+<div class="modal fade" id="guideModal" tabindex="-1" aria-labelledby="guideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="guideModalLabel">Achievement Guides</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="guideLoading" class="text-center my-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Searching...</span>
+                    </div>
+                    <p class="mt-2">Searching for guides...</p>
+                </div>
+
+                <div id="guideError" class="alert alert-danger d-none" role="alert"></div>
+
+                <div id="guideResults" class="list-group">
+                    <!-- Guide results will be inserted here -->
+                </div>
+
+                <div id="noGuides" class="text-center my-3 d-none">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No guides found</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/achievements.js') }}"></script>
+<script>
+    const APP_ID = {{ app_id }};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAchievements(APP_ID);
+
+        // Filter achievements
+        document.querySelectorAll('input[name="filterAchievements"]').forEach(radio => {
+            radio.addEventListener('change', filterAchievements);
+        });
+
+        // Search achievements
+        document.getElementById('searchAchievements').addEventListener('input', filterAchievements);
+    });
+</script>
+{% endblock %}

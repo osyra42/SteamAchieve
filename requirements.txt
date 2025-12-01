@@ -1,0 +1,7 @@
+# Python dependencies
+Flask==3.0.0
+python-dotenv==1.0.0
+requests==2.31.0
+# pySteamSignIn==1.1.1
+duckduckgo-search==4.1.1
+beautifulsoup4==4.12.2  # Optional: for parsing guide snippets
