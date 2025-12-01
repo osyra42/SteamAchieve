@@ -156,6 +156,9 @@ Provide specific, actionable strategies to unlock this achievement. Include any 
         try:
             content = response['choices'][0]['message']['content']
 
+            # Strip markdown code blocks if present
+            content = self._strip_markdown_formatting(content)
+
             # Try to parse as JSON first
             import json
             try:
@@ -167,15 +170,25 @@ Provide specific, actionable strategies to unlock this achievement. Include any 
                     'estimated_time': 'Varies',
                     'strategies': [content],
                     'tips': [],
-                    'summary': content[:200] + '...' if len(content) > 200 else content
+                    'summary': content[:500] + '...' if len(content) > 500 else content
                 }
 
-            # Ensure all required fields exist
+            # Ensure all required fields exist and clean markdown
             guide_data.setdefault('difficulty_rating', self._estimate_difficulty(global_percent))
             guide_data.setdefault('estimated_time', 'Varies')
             guide_data.setdefault('strategies', [])
             guide_data.setdefault('tips', [])
             guide_data.setdefault('summary', '')
+
+            # Clean markdown from all text fields
+            if guide_data.get('summary'):
+                guide_data['summary'] = self._clean_text(guide_data['summary'])
+
+            if guide_data.get('strategies'):
+                guide_data['strategies'] = [self._clean_text(s) for s in guide_data['strategies']]
+
+            if guide_data.get('tips'):
+                guide_data['tips'] = [self._clean_text(t) for t in guide_data['tips']]
 
             return guide_data
 
@@ -239,6 +252,65 @@ Provide specific, actionable strategies to unlock this achievement. Include any 
                 count += 1
 
         return guides
+
+    def _strip_markdown_formatting(self, text):
+        """
+        Strip markdown code block formatting from text
+        Removes triple backticks and language specifiers
+        """
+        import re
+        
+        # Remove code blocks with language specifier (e.g., ```json or ```python)
+        text = re.sub(r'```[\w]*\n', '', text)
+        # Remove closing code blocks
+        text = re.sub(r'```', '', text)
+        
+        return text.strip()
+    
+    def _clean_text(self, text):
+        """
+        Clean markdown formatting from text and convert to HTML-safe format
+        Removes code blocks, converts markdown to plain text with basic HTML
+        """
+        import re
+        
+        if not text:
+            return text
+        
+        # Remove code blocks
+        text = self._strip_markdown_formatting(text)
+        
+        # Convert bold (**text** or __text__) to <strong>
+        text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+        text = re.sub(r'__(.+?)__', r'<strong>\1</strong>', text)
+        
+        # Convert italic (*text* or _text_) to <em>
+        text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+        text = re.sub(r'_(.+?)_', r'<em>\1</em>', text)
+        
+        # Convert inline code (`code`) to <code>
+        text = re.sub(r'`(.+?)`', r'<code>\1</code>', text)
+        
+        # Convert bullet points to proper list items (preserve for HTML rendering)
+        # Lines starting with - or * become list items
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Check if line is a bullet point
+            if re.match(r'^\s*[-*]\s+', line):
+                # Convert to plain text bullet (keep the dash/asterisk for simple formatting)
+                line = re.sub(r'^\s*[-*]\s+', '• ', line)
+            cleaned_lines.append(line)
+        
+        text = '\n'.join(cleaned_lines)
+        
+        # Remove any remaining markdown headers (#)
+        text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
+        
+        # Convert newlines to <br> for HTML display
+        text = text.replace('\n', '<br>')
+        
+        return text.strip()
 
     def get_rate_limit_status(self):
         """Get current rate limit status"""
