@@ -18,7 +18,7 @@ class Config:
     # OpenRouter AI API configuration
     OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
     OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
-    OPENROUTER_MODEL = 'x-ai/grok-beta'  # Free tier model
+    OPENROUTER_MODEL = 'kwaipilot/kat-coder-pro:free'  # Free tier model
     OPENROUTER_MAX_TOKENS = 2000
     OPENROUTER_TEMPERATURE = 0.7
 
