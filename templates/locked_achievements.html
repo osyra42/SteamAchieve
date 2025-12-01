@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Achievement Hunter - SteamAchieve{% endblock %}
+
+{% block extra_css %}
+<style>
+    .achievement-hunter-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .stats-card {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .stats-card h3 {
+        color: #66c0f4;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-card p {
+        color: #8f98a0;
+        margin: 0;
+    }
+
+    .locked-achievement-card {
+        background: #16202d;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .locked-achievement-card:hover {
+        background: #1b2838;
+        border-color: #66c0f4;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 192, 244, 0.2);
+    }
+
+    .achievement-game-badge {
+        display: inline-block;
+        background: #2a475e;
+        color: #66c0f4;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .achievement-rarity {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+
+    .rarity-legendary { background: #b4a7d6; color: #1a1a1a; }
+    .rarity-ultra-rare { background: #8e44ad; color: white; }
+    .rarity-very-rare { background: #e74c3c; color: white; }
+    .rarity-rare { background: #f39c12; color: white; }
+    .rarity-uncommon { background: #3498db; color: white; }
+    .rarity-common { background: #95a5a6; color: white; }
+
+    .guide-sources-tabs {
+        margin-top: 1rem;
+    }
+
+    .guide-source-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .source-ai { background: #9b59b6; color: white; }
+    .source-steam { background: #1b2838; color: #66c0f4; }
+    .source-youtube { background: #ff0000; color: white; }
+    .source-reddit { background: #ff4500; color: white; }
+    .source-wiki { background: #6c757d; color: white; }
+
+    .ai-guide-content {
+        background: #0e1621;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #9b59b6;
+    }
+
+    .strategy-item {
+        background: #1b2838;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+        border-left: 3px solid #66c0f4;
+    }
+
+    .tip-item {
+        background: #16202d;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        border-left: 3px solid #f39c12;
+    }
+
+    .difficulty-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .diff-1, .diff-2 { background: #27ae60; color: white; }
+    .diff-3, .diff-4 { background: #3498db; color: white; }
+    .diff-5, .diff-6 { background: #f39c12; color: white; }
+    .diff-7, .diff-8 { background: #e67e22; color: white; }
+    .diff-9, .diff-10 { background: #e74c3c; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="achievement-hunter-header">
+        <h1><i class="fas fa-crosshairs"></i> Achievement Hunter</h1>
+        <p class="mb-0">Discover locked achievements across your games with AI-powered guides and community resources</p>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loadingAchievements" class="text-center py-5" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-light">Scanning your games for locked achievements...</p>
+    </div>
+
+    <!-- Error message -->
+    <div id="errorMessage" class="alert alert-danger" role="alert" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="errorText"></span>
+    </div>
+
+    <!-- Stats Section -->
+    <div id="statsSection" class="row mb-4" style="display: none;">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="totalLocked">0</h3>
+                <p>Locked Achievements</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="gamesScanned">0</h3>
+                <p>Games Scanned</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="ultraRareCount">0</h3>
+                <p>Ultra Rare (&lt;1%)</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="aiGuidesAvailable">0</h3>
+                <p>AI Guides Ready</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div id="filtersSection" class="card bg-dark border-secondary mb-4" style="display: none;">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-light">Filter by Game</label>
+                    <select id="gameFilter" class="form-select bg-dark text-light border-secondary">
+                        <option value="">All Games</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-light">Filter by Rarity</label>
+                    <select id="rarityFilter" class="form-select bg-dark text-light border-secondary">
+                        <option value="">All Rarities</option>
+                        <option value="legendary">Legendary (&lt;1%)</option>
+                        <option value="ultra-rare">Ultra Rare (1-10%)</option>
+                        <option value="rare">Rare (10-25%)</option>
+                        <option value="uncommon">Uncommon (25-50%)</option>
+                        <option value="common">Common (&gt;50%)</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-light">Sort By</label>
+                    <select id="sortBy" class="form-select bg-dark text-light border-secondary">
+                        <option value="rarity">Rarest First</option>
+                        <option value="common">Most Common First</option>
+                        <option value="game">Group by Game</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label text-light">Search</label>
+                    <input type="text" id="searchInput" class="form-control bg-dark text-light border-secondary"
+                           placeholder="Search achievements...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements List -->
+    <div id="achievementsList">
+        <!-- Achievements will be loaded here dynamically -->
+    </div>
+
+    <!-- No achievements message -->
+    <div id="noAchievements" class="alert alert-info" style="display: none;">
+        <i class="fas fa-info-circle"></i> No locked achievements found. Great job!
+    </div>
+</div>
+
+<!-- Guide Modal -->
+<div class="modal fade" id="guideModal" tabindex="-1" aria-labelledby="guideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="guideModalLabel">Achievement Guide</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading indicator -->
+                <div id="guideLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading guides...</span>
+                    </div>
+                    <p class="mt-3">Finding the best guides for you...</p>
+                </div>
+
+                <!-- Error message -->
+                <div id="guideError" class="alert alert-danger" role="alert" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i> <span id="guideErrorText"></span>
+                </div>
+
+                <!-- Guide tabs -->
+                <ul class="nav nav-tabs mb-3" id="guideTabs" role="tablist" style="display: none;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="ai-tab" data-bs-toggle="tab" data-bs-target="#ai-guide"
+                                type="button" role="tab" aria-controls="ai-guide" aria-selected="true">
+                            <i class="fas fa-robot"></i> AI Guide
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="community-tab" data-bs-toggle="tab" data-bs-target="#community-guides"
+                                type="button" role="tab" aria-controls="community-guides" aria-selected="false">
+                            <i class="fas fa-users"></i> Community Guides
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab content -->
+                <div class="tab-content" id="guideTabContent">
+                    <!-- AI Guide Tab -->
+                    <div class="tab-pane fade show active" id="ai-guide" role="tabpanel" aria-labelledby="ai-tab">
+                        <div id="aiGuideContent">
+                            <!-- AI guide will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Community Guides Tab -->
+                    <div class="tab-pane fade" id="community-guides" role="tabpanel" aria-labelledby="community-tab">
+                        <div id="communityGuidesContent">
+                            <!-- Community guides will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/locked_achievements.js') }}"></script>
+<script>
+    // Load locked achievements on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLockedAchievements();
+    });
+</script>
+{% endblock %}

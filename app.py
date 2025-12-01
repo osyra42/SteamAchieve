@@ -92,6 +92,15 @@ def achievements(app_id):
     return render_template('achievements.html', user=user, app_id=app_id)
 
 
+@app.route('/achievement-hunter')
+@require_login
+def locked_achievements_page():
+    """Achievement hunter page - discover locked achievements with guides"""
+    steam_id = get_current_user()
+    user = db.get_user(steam_id)
+    return render_template('locked_achievements.html', user=user)
+
+
 # API Routes
 @app.route('/api/user/profile')
 @require_login
@@ -138,9 +147,10 @@ def api_games():
         # Cache the games
         db.cache_games(steam_id, games)
 
-        # Convert to list of dicts for JSON response
+        # Convert to list of dicts for JSON response with image URLs
         games_list = []
         for game in games:
+            enriched_game = steam_api.enrich_game_with_images(game)
             games_list.append({
                 'app_id': game.get('appid'),
                 'name': game.get('name'),
@@ -148,7 +158,8 @@ def api_games():
                 'img_logo_url': game.get('img_logo_url'),
                 'playtime_forever': game.get('playtime_forever', 0),
                 'playtime_2weeks': game.get('playtime_2weeks', 0),
-                'last_played': game.get('rtime_last_played', 0)
+                'last_played': game.get('rtime_last_played', 0),
+                'images': enriched_game.get('images', {})
             })
 
         return jsonify({
@@ -239,6 +250,167 @@ def api_cached_guides():
         return jsonify({
             'success': True,
             'guides': guides or []
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/locked-achievements')
+@require_login
+def api_locked_achievements():
+    """Get all locked achievements across all games"""
+    steam_id = get_current_user()
+
+    try:
+        # Get user's games
+        games = steam_api.get_owned_games(steam_id)
+
+        if not games:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch games'
+            }), 400
+
+        locked_achievements = []
+        games_with_achievements = 0
+
+        # Limit to first 20 games to avoid long response times
+        max_games = request.args.get('max_games', 20, type=int)
+
+        for game in games[:max_games]:
+            app_id = game.get('appid')
+            game_name = game.get('name')
+
+            # Fetch achievements for this game
+            result = steam_api.get_achievements_for_game(steam_id, app_id)
+
+            if result.get('success'):
+                games_with_achievements += 1
+                achievements = result.get('achievements', [])
+
+                # Filter locked achievements
+                locked = [ach for ach in achievements if not ach.get('achieved')]
+
+                # Add game info to each achievement
+                for ach in locked:
+                    ach['game_name'] = game_name
+                    ach['app_id'] = app_id
+
+                locked_achievements.extend(locked)
+
+        # Sort by rarity (rarest first)
+        locked_achievements.sort(key=lambda x: x.get('global_percent', 100))
+
+        return jsonify({
+            'success': True,
+            'locked_achievements': locked_achievements,
+            'total_locked': len(locked_achievements),
+            'games_scanned': games_with_achievements,
+            'total_games': len(games)
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/achievement/guide/ai-generate', methods=['POST'])
+@require_login
+def api_ai_generate_guide():
+    """Generate AI-powered guide for an achievement"""
+    from ai_guide_generator import ai_guide_generator
+
+    data = request.get_json()
+    app_id = data.get('app_id')
+    game_name = data.get('game_name')
+    achievement_name = data.get('achievement_name')
+    achievement_description = data.get('achievement_description', '')
+    global_percent = data.get('global_percent')
+    force_regenerate = data.get('force_regenerate', False)
+
+    if not all([app_id, game_name, achievement_name]):
+        return jsonify({
+            'success': False,
+            'error': 'Missing required parameters'
+        }), 400
+
+    try:
+        result = ai_guide_generator.generate_guide(
+            app_id=app_id,
+            achievement_name=achievement_name,
+            game_name=game_name,
+            achievement_description=achievement_description,
+            global_percent=global_percent,
+            force_regenerate=force_regenerate
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/achievement/guide/multi-search', methods=['POST'])
+@require_login
+def api_multi_search_guides():
+    """Search for guides from multiple sources"""
+    from guide_aggregator import guide_aggregator
+
+    data = request.get_json()
+    app_id = data.get('app_id')
+    game_name = data.get('game_name')
+    achievement_name = data.get('achievement_name')
+    achievement_description = data.get('achievement_description', '')
+    global_percent = data.get('global_percent')
+    sources = data.get('sources')  # None = all sources
+    max_results = data.get('max_results', 15)
+
+    if not all([app_id, game_name, achievement_name]):
+        return jsonify({
+            'success': False,
+            'error': 'Missing required parameters'
+        }), 400
+
+    try:
+        result = guide_aggregator.aggregate_guides(
+            app_id=app_id,
+            game_name=game_name,
+            achievement_name=achievement_name,
+            achievement_description=achievement_description,
+            global_percent=global_percent,
+            sources=sources,
+            max_results=max_results
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/ai/rate-limit-status')
+@require_login
+def api_ai_rate_limit():
+    """Get current AI API rate limit status"""
+    from ai_guide_generator import ai_guide_generator
+
+    try:
+        status = ai_guide_generator.get_rate_limit_status()
+        return jsonify({
+            'success': True,
+            'rate_limit': status
         })
 
     except Exception as e:

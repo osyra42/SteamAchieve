@@ -52,6 +52,11 @@ class Database:
                     name TEXT,
                     img_icon_url TEXT,
                     img_logo_url TEXT,
+                    header_image TEXT,
+                    capsule_image TEXT,
+                    hero_image TEXT,
+                    logo_image TEXT,
+                    library_capsule TEXT,
                     playtime_forever INTEGER,
                     playtime_2weeks INTEGER,
                     last_played TIMESTAMP,
@@ -92,10 +97,65 @@ class Database:
                 )
             ''')
 
+            # AI generated guides table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ai_generated_guides (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    app_id INTEGER NOT NULL,
+                    achievement_name TEXT NOT NULL,
+                    game_name TEXT,
+                    achievement_description TEXT,
+                    guide_content TEXT NOT NULL,
+                    difficulty_rating INTEGER,
+                    estimated_time TEXT,
+                    strategies TEXT,
+                    tips TEXT,
+                    model_used TEXT DEFAULT 'grok-4.1-fast',
+                    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    rating INTEGER DEFAULT 0,
+                    views INTEGER DEFAULT 0,
+                    UNIQUE(app_id, achievement_name)
+                )
+            ''')
+
+            # User guide preferences table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_guide_preferences (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    steam_id TEXT NOT NULL,
+                    prefer_ai_guides BOOLEAN DEFAULT 1,
+                    prefer_video_guides BOOLEAN DEFAULT 1,
+                    prefer_text_guides BOOLEAN DEFAULT 1,
+                    prefer_community_guides BOOLEAN DEFAULT 1,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (steam_id) REFERENCES users(steam_id),
+                    UNIQUE(steam_id)
+                )
+            ''')
+
+            # Guide bookmarks table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS guide_bookmarks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    steam_id TEXT NOT NULL,
+                    app_id INTEGER NOT NULL,
+                    achievement_name TEXT NOT NULL,
+                    guide_url TEXT,
+                    guide_id INTEGER,
+                    guide_type TEXT DEFAULT 'external',
+                    notes TEXT,
+                    bookmarked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (steam_id) REFERENCES users(steam_id),
+                    UNIQUE(steam_id, app_id, achievement_name, guide_url)
+                )
+            ''')
+
             # Create indexes for performance
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_cached_games_steam_id ON cached_games(steam_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_achievement_guides_app_id ON achievement_guides(app_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_guide_search_cache_query ON guide_search_cache(search_query)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_ai_guides_app_achievement ON ai_generated_guides(app_id, achievement_name)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_bookmarks_steam_id ON guide_bookmarks(steam_id)')
 
     # User operations
     def upsert_user(self, steam_id, persona_name=None, profile_url=None, avatar_url=None):
@@ -129,19 +189,26 @@ class Database:
             # Delete old cached games for this user
             cursor.execute('DELETE FROM cached_games WHERE steam_id = ?', (steam_id,))
 
-            # Insert new games
+            # Insert new games with image URLs
             for game in games:
+                images = game.get('images', {})
                 cursor.execute('''
                     INSERT INTO cached_games
                     (steam_id, app_id, name, img_icon_url, img_logo_url,
+                     header_image, capsule_image, hero_image, logo_image, library_capsule,
                      playtime_forever, playtime_2weeks, last_played, cached_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     steam_id,
                     game.get('appid'),
                     game.get('name'),
                     game.get('img_icon_url'),
                     game.get('img_logo_url'),
+                    images.get('header'),
+                    images.get('capsule'),
+                    images.get('hero'),
+                    images.get('logo'),
+                    images.get('library_capsule'),
                     game.get('playtime_forever', 0),
                     game.get('playtime_2weeks', 0),
                     datetime.fromtimestamp(game['rtime_last_played']) if game.get('rtime_last_played') else None,
@@ -254,6 +321,148 @@ class Database:
             cursor.execute('DELETE FROM guide_search_cache WHERE expires_at < ?', (datetime.now(),))
             deleted = cursor.rowcount
             return deleted
+
+    # AI Guide operations
+    def save_ai_guide(self, app_id, achievement_name, game_name, achievement_description,
+                      guide_content, difficulty_rating=None, estimated_time=None,
+                      strategies=None, tips=None, model_used='grok-4.1-fast'):
+        """Save AI-generated guide"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO ai_generated_guides
+                (app_id, achievement_name, game_name, achievement_description, guide_content,
+                 difficulty_rating, estimated_time, strategies, tips, model_used, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(app_id, achievement_name) DO UPDATE SET
+                    guide_content = excluded.guide_content,
+                    difficulty_rating = excluded.difficulty_rating,
+                    estimated_time = excluded.estimated_time,
+                    strategies = excluded.strategies,
+                    tips = excluded.tips,
+                    model_used = excluded.model_used,
+                    generated_at = excluded.generated_at
+            ''', (app_id, achievement_name, game_name, achievement_description, guide_content,
+                  difficulty_rating, estimated_time, strategies, tips, model_used, datetime.now()))
+
+            return cursor.lastrowid
+
+    def get_ai_guide(self, app_id, achievement_name):
+        """Get AI-generated guide for an achievement"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM ai_generated_guides
+                WHERE app_id = ? AND achievement_name = ?
+            ''', (app_id, achievement_name))
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def increment_guide_views(self, guide_id):
+        """Increment view count for AI guide"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE ai_generated_guides
+                SET views = views + 1
+                WHERE id = ?
+            ''', (guide_id,))
+
+    def rate_ai_guide(self, guide_id, rating):
+        """Update rating for AI guide"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE ai_generated_guides
+                SET rating = ?
+                WHERE id = ?
+            ''', (rating, guide_id))
+
+    # Guide Bookmarks operations
+    def add_bookmark(self, steam_id, app_id, achievement_name, guide_url=None,
+                     guide_id=None, guide_type='external', notes=None):
+        """Bookmark a guide for later"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO guide_bookmarks
+                (steam_id, app_id, achievement_name, guide_url, guide_id, guide_type, notes, bookmarked_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(steam_id, app_id, achievement_name, guide_url) DO UPDATE SET
+                    notes = excluded.notes
+            ''', (steam_id, app_id, achievement_name, guide_url, guide_id,
+                  guide_type, notes, datetime.now()))
+
+            return cursor.lastrowid
+
+    def get_bookmarks(self, steam_id, app_id=None):
+        """Get user's bookmarked guides"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            if app_id:
+                cursor.execute('''
+                    SELECT * FROM guide_bookmarks
+                    WHERE steam_id = ? AND app_id = ?
+                    ORDER BY bookmarked_at DESC
+                ''', (steam_id, app_id))
+            else:
+                cursor.execute('''
+                    SELECT * FROM guide_bookmarks
+                    WHERE steam_id = ?
+                    ORDER BY bookmarked_at DESC
+                ''', (steam_id,))
+
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows] if rows else []
+
+    def remove_bookmark(self, steam_id, bookmark_id):
+        """Remove a bookmarked guide"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM guide_bookmarks
+                WHERE id = ? AND steam_id = ?
+            ''', (bookmark_id, steam_id))
+
+            return cursor.rowcount > 0
+
+    # User Preferences operations
+    def save_guide_preferences(self, steam_id, prefer_ai=True, prefer_video=True,
+                                prefer_text=True, prefer_community=True):
+        """Save user's guide preferences"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO user_guide_preferences
+                (steam_id, prefer_ai_guides, prefer_video_guides, prefer_text_guides,
+                 prefer_community_guides, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(steam_id) DO UPDATE SET
+                    prefer_ai_guides = excluded.prefer_ai_guides,
+                    prefer_video_guides = excluded.prefer_video_guides,
+                    prefer_text_guides = excluded.prefer_text_guides,
+                    prefer_community_guides = excluded.prefer_community_guides,
+                    updated_at = excluded.updated_at
+            ''', (steam_id, prefer_ai, prefer_video, prefer_text, prefer_community, datetime.now()))
+
+    def get_guide_preferences(self, steam_id):
+        """Get user's guide preferences"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM user_guide_preferences
+                WHERE steam_id = ?
+            ''', (steam_id,))
+
+            row = cursor.fetchone()
+            return dict(row) if row else {
+                'prefer_ai_guides': True,
+                'prefer_video_guides': True,
+                'prefer_text_guides': True,
+                'prefer_community_guides': True
+            }
 
 
 # Global database instance
