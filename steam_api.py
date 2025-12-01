@@ -7,6 +7,7 @@ class SteamAPI:
 
     BASE_URL = 'https://api.steampowered.com'
     CDN_URL = 'http://cdn.steampowered.com/steamcommunity/public/images/apps'
+    STORE_CDN = 'https://cdn.cloudflare.steamstatic.com/steam/apps'
 
     def __init__(self, api_key=None):
         self.api_key = api_key or Config.STEAM_API_KEY
@@ -114,6 +115,44 @@ class SteamAPI:
         if not icon_hash:
             return None
         return f"{self.CDN_URL}/{app_id}/{icon_hash}.jpg"
+
+    def get_game_header_image(self, app_id):
+        """Get game header image (460x215) - used in library"""
+        return f"{self.STORE_CDN}/{app_id}/header.jpg"
+
+    def get_game_capsule_image(self, app_id, size='231x87'):
+        """Get game capsule image - available sizes: 231x87, 184x69, 467x181"""
+        return f"{self.STORE_CDN}/{app_id}/capsule_{size}.jpg"
+
+    def get_game_hero_image(self, app_id):
+        """Get game hero/banner image (1920x620)"""
+        return f"{self.STORE_CDN}/{app_id}/library_hero.jpg"
+
+    def get_game_logo(self, app_id):
+        """Get game logo (transparent PNG)"""
+        return f"{self.STORE_CDN}/{app_id}/logo.png"
+
+    def get_game_library_capsule(self, app_id):
+        """Get library capsule image (600x900) - vertical poster"""
+        return f"{self.STORE_CDN}/{app_id}/library_600x900.jpg"
+
+    def enrich_game_with_images(self, game):
+        """Add image URLs to game data"""
+        app_id = game.get('appid')
+        if not app_id:
+            return game
+
+        game['images'] = {
+            'header': self.get_game_header_image(app_id),
+            'capsule': self.get_game_capsule_image(app_id),
+            'capsule_small': self.get_game_capsule_image(app_id, '184x69'),
+            'capsule_large': self.get_game_capsule_image(app_id, '467x181'),
+            'hero': self.get_game_hero_image(app_id),
+            'logo': self.get_game_logo(app_id),
+            'library_capsule': self.get_game_library_capsule(app_id)
+        }
+
+        return game
 
     def merge_achievement_data(self, player_achievements, schema_achievements, global_percentages):
         """Merge player achievements with schema and global data"""

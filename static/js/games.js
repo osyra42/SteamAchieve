@@ -72,18 +72,23 @@ function createGameCard(game) {
     const playtime2Weeks = game.playtime_2weeks || 0;
     const lastPlayed = game.last_played || 0;
 
-    // Get game image URL
-    const imgHash = game.img_logo_url || game.img_icon_url;
-    const gameImageUrl = imgHash
-        ? getSteamGameImageUrl(appId, imgHash)
-        : `https://via.placeholder.com/460x215/1b2838/66c0f4?text=${encodeURIComponent(gameName)}`;
+    // Use new CDN image URLs with fallbacks
+    let gameImageUrl;
+    if (game.images && game.images.header) {
+        gameImageUrl = game.images.header;
+    } else if (game.header_image) {
+        gameImageUrl = game.header_image;
+    } else {
+        // Fallback to Steam CDN header image
+        gameImageUrl = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
+    }
 
     const card = document.createElement('div');
     card.className = 'game-card';
     card.onclick = () => viewAchievements(appId);
 
     card.innerHTML = `
-        <img src="${gameImageUrl}" alt="${gameName}" onerror="this.src='https://via.placeholder.com/460x215/1b2838/66c0f4?text=Game+Image'">
+        <img src="${gameImageUrl}" alt="${gameName}" onerror="this.src='https://via.placeholder.com/460x215/1b2838/66c0f4?text=${encodeURIComponent(gameName)}'">
         <div class="card-body">
             <h5 class="card-title" title="${gameName}">${gameName}</h5>
             <div class="game-playtime">

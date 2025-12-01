@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flask:*)"
+      "Bash(flask:*)",
+      "Bash(python database.py:*)"
     ],
     "deny": [],
     "ask": []
