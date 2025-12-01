@@ -12,7 +12,7 @@ Guide aggregator - combines guides from multiple sources
 import re
 import requests
 from bs4 import BeautifulSoup
-from guide_search import search_achievement_guides
+from guide_search import guide_searcher
 from ai_guide_generator import ai_guide_generator
 from database import db
 
@@ -129,7 +129,7 @@ class GuideAggregator:
 
         # Perform new search
         try:
-            results = search_achievement_guides(game_name, achievement_name, max_results=10)
+            results = guide_searcher.search_guides(game_name, achievement_name, max_results=10)
             if results:
                 # Cache the results
                 db.cache_achievement_guides(app_id, achievement_name, results)
