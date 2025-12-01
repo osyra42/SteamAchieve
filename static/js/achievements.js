@@ -91,7 +91,7 @@ function createAchievementCard(achievement) {
         ? `<span class="unlock-date"><i class="fas fa-check-circle"></i> Unlocked: ${formatUnlockDate(achievement.unlocktime)}</span>`
         : '';
 
-    const globalPercent = achievement.global_percent || 0;
+    const globalPercent = parseFloat(achievement.global_percent) || 0;
     const rarity = getRarityLabel(globalPercent);
 
     card.innerHTML = `
