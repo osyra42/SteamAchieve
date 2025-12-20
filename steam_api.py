@@ -192,17 +192,35 @@ class SteamAPI:
         return merged
 
     def sort_achievements_locked_first(self, achievements):
-        """Sort achievements: locked first, then unlocked"""
+        """Sort achievements: locked first (common to rare), then unlocked at bottom"""
         locked = [ach for ach in achievements if not ach['achieved']]
         unlocked = [ach for ach in achievements if ach['achieved']]
 
-        # Sort locked by global percentage (rarest first)
-        locked.sort(key=lambda x: x.get('global_percent', 100))
+        # Sort locked by global percentage (most common first - highest % at top)
+        locked.sort(key=lambda x: x.get('global_percent', 0), reverse=True)
 
         # Sort unlocked by unlock time (most recent first)
         unlocked.sort(key=lambda x: x.get('unlocktime', 0), reverse=True)
 
         return locked + unlocked
+
+    def get_achievement_stats_only(self, steam_id, app_id):
+        """Get just achievement counts (fast, single API call)"""
+        player_achievements = self.get_player_achievements(steam_id, app_id)
+
+        if player_achievements is None:
+            return None
+
+        total = len(player_achievements)
+        unlocked = sum(1 for ach in player_achievements if ach.get('achieved', 0) == 1)
+        completion_percent = (unlocked / total * 100) if total > 0 else 0
+
+        return {
+            'total': total,
+            'unlocked': unlocked,
+            'locked': total - unlocked,
+            'completion_percent': round(completion_percent, 1)
+        }
 
     def get_achievements_for_game(self, steam_id, app_id):
         """Get complete achievement data for a game (player + schema + global)"""

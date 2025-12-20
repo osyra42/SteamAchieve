@@ -5,6 +5,47 @@ let currentGameName = '';
 let currentAppId = null;
 let guideModal = null;
 
+async function rescanGame() {
+    if (!currentAppId) return;
+
+    const btn = document.getElementById('rescanGameBtn');
+    const icon = document.getElementById('rescanGameIcon');
+
+    // Disable button and add spin animation
+    btn.disabled = true;
+    icon.classList.add('fa-spin');
+
+    try {
+        // Reload achievements from API
+        await loadAchievements(currentAppId);
+
+        // Update the cache if GameCache is available
+        if (typeof GameCache !== 'undefined') {
+            const stats = {
+                total: parseInt(document.getElementById('totalAchievements').textContent) || 0,
+                unlocked: parseInt(document.getElementById('unlockedAchievements').textContent) || 0,
+                locked: parseInt(document.getElementById('lockedAchievements').textContent) || 0,
+                completion_percent: parseFloat(document.getElementById('completionPercent').textContent) || 0
+            };
+
+            GameCache.updateGame({
+                app_id: currentAppId,
+                name: currentGameName,
+                total: stats.total,
+                unlocked: stats.unlocked,
+                locked: stats.locked,
+                completion_percent: stats.completion_percent,
+                header_image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${currentAppId}/header.jpg`,
+                playtime_forever: 0
+            });
+        }
+    } finally {
+        // Re-enable button and stop spin
+        btn.disabled = false;
+        icon.classList.remove('fa-spin');
+    }
+}
+
 async function loadAchievements(appId) {
     currentAppId = appId;
 
@@ -93,12 +134,20 @@ function createAchievementCard(achievement) {
 
     const globalPercent = parseFloat(achievement.global_percent) || 0;
     const rarity = getRarityLabel(globalPercent);
+    const rarityClass = getRarityClass(globalPercent);
+    card.classList.add(rarityClass);
+
+    // Handle hidden achievements
+    let description = achievement.description;
+    if (!description || description.trim() === '') {
+        description = achievement.hidden ? '🔒 Hidden achievement' : 'No description';
+    }
 
     card.innerHTML = `
         <img src="${iconUrl}" alt="${achievement.name}" class="achievement-icon ${!achievement.achieved ? 'grayscale' : ''}">
         <div class="achievement-content">
             <div class="achievement-title">${achievement.name}</div>
-            <div class="achievement-description">${achievement.description || 'No description'}</div>
+            <div class="achievement-description">${description}</div>
             <div class="achievement-meta">
                 <span class="global-percent">
                     <i class="fas fa-users"></i> ${globalPercent.toFixed(1)}% ${rarity}
@@ -117,12 +166,23 @@ function createAchievementCard(achievement) {
 }
 
 function getRarityLabel(percent) {
-    if (percent >= 75) return '(Common)';
-    if (percent >= 50) return '(Uncommon)';
-    if (percent >= 25) return '(Rare)';
-    if (percent >= 10) return '(Very Rare)';
+    if (percent === 0) return '(Impossible)';
+    if (percent >= 50) return '(Common)';
+    if (percent >= 25) return '(Uncommon)';
+    if (percent >= 10) return '(Rare)';
+    if (percent >= 5) return '(Very Rare)';
     if (percent >= 1) return '(Ultra Rare)';
     return '(Legendary)';
+}
+
+function getRarityClass(percent) {
+    if (percent === 0) return 'rarity-impossible';
+    if (percent >= 50) return 'rarity-common';
+    if (percent >= 25) return 'rarity-uncommon';
+    if (percent >= 10) return 'rarity-rare';
+    if (percent >= 5) return 'rarity-very-rare';
+    if (percent >= 1) return 'rarity-ultra-rare';
+    return 'rarity-legendary';
 }
 
 function escapeHtml(text) {

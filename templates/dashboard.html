@@ -40,10 +40,17 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/game_cache.js') }}"></script>
 <script src="{{ url_for('static', filename='js/games.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         loadGames();
+
+        // Redirect to scanning page if no cache exists
+        if (!GameCache.isValid()) {
+            console.log('No game cache found, redirecting to scanning page...');
+            window.location.href = '/scanning';
+        }
     });
 </script>
 {% endblock %}

@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Achievement Hunter - SteamAchieve{% endblock %}
+
+{% block extra_css %}
+<style>
+    .achievement-hunter-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .stats-card {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .stats-card h3 {
+        color: #66c0f4;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-card p {
+        color: #8f98a0;
+        margin: 0;
+    }
+
+    .game-progress-card {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .game-progress-card:hover {
+        border-color: #66c0f4;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 192, 244, 0.2);
+    }
+
+    .game-progress-card .game-header {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .game-progress-card .game-image {
+        width: 184px;
+        height: 69px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 1rem;
+    }
+
+    .game-progress-card .game-info {
+        flex-grow: 1;
+    }
+
+    .game-progress-card .game-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #c7d5e0;
+        margin-bottom: 0.5rem;
+    }
+
+    .game-progress-card .achievement-stats {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #8f98a0;
+        font-size: 0.9rem;
+    }
+
+    .game-progress-card .locked-count {
+        background: #ff5722;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+
+    .game-progress-card .progress {
+        height: 8px;
+        background: #16202d;
+        border-radius: 0;
+    }
+
+    .game-progress-card .progress-bar {
+        background: linear-gradient(90deg, #66c0f4, #4a9eda);
+        border-radius: 0;
+    }
+
+    .sort-controls {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="achievement-hunter-header">
+        <h1><i class="fas fa-crosshairs"></i> Achievement Hunter</h1>
+        <p class="mb-0">Games sorted by achievements remaining - start with the easiest to complete!</p>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loadingGames" class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-light mb-2">Loading your games...</p>
+    </div>
+
+    <!-- Error message -->
+    <div id="errorMessage" class="alert alert-danger" role="alert" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="errorText"></span>
+    </div>
+
+    <!-- Stats Section -->
+    <div id="statsSection" class="row mb-4" style="display: none;">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="totalGames">0</h3>
+                <p>Games with Achievements</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="totalLocked">0</h3>
+                <p>Total Locked</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="totalUnlocked">0</h3>
+                <p>Total Unlocked</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <h3 id="completedGames">0</h3>
+                <p>100% Completed</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sort Controls -->
+    <div id="sortControls" class="sort-controls" style="display: none;">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label text-light">Sort By</label>
+                <select id="sortBy" class="form-select bg-dark text-light border-secondary">
+                    <option value="locked_asc">Fewest Locked First</option>
+                    <option value="locked_desc">Most Locked First</option>
+                    <option value="percent_desc">Highest Completion First</option>
+                    <option value="percent_asc">Lowest Completion First</option>
+                    <option value="name_asc">Name (A-Z)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-light">Search</label>
+                <input type="text" id="searchInput" class="form-control bg-dark text-light border-secondary"
+                       placeholder="Search games...">
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('completed_games_page') }}" class="btn btn-success mt-4">
+                    <i class="fas fa-trophy"></i> View Completed Games
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Games List -->
+    <div id="gamesList">
+        <!-- Games will be loaded here dynamically -->
+    </div>
+
+    <!-- No games message -->
+    <div id="noGames" class="alert alert-info" style="display: none;">
+        <i class="fas fa-info-circle"></i> No games with remaining achievements found. Check the Completed Games page!
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/game_cache.js') }}"></script>
+<script>
+let allGames = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadGames();
+
+    document.getElementById('sortBy').addEventListener('change', renderGames);
+    document.getElementById('searchInput').addEventListener('input', renderGames);
+});
+
+function loadGames() {
+    // Check for cached data first
+    if (GameCache.isValid()) {
+        allGames = GameCache.getGames() || [];
+        displayGamesFromCache();
+    } else {
+        // No cache, redirect to scanning page
+        window.location.href = '/scanning';
+    }
+}
+
+function displayGamesFromCache() {
+    const loadingEl = document.getElementById('loadingGames');
+    const statsEl = document.getElementById('statsSection');
+    const sortEl = document.getElementById('sortControls');
+    const noGamesEl = document.getElementById('noGames');
+
+    loadingEl.style.display = 'none';
+
+    const stats = GameCache.getStats();
+
+    // Update stats
+    document.getElementById('totalGames').textContent = stats.incompleteGames;
+    document.getElementById('totalLocked').textContent = stats.totalLocked;
+    document.getElementById('totalUnlocked').textContent = stats.totalUnlocked;
+    document.getElementById('completedGames').textContent = stats.completedGames;
+
+    statsEl.style.display = 'flex';
+    sortEl.style.display = 'block';
+
+    if (stats.incompleteGames === 0) {
+        noGamesEl.style.display = 'block';
+    } else {
+        renderGames();
+    }
+}
+
+function renderGames() {
+    const gamesEl = document.getElementById('gamesList');
+    const noGamesEl = document.getElementById('noGames');
+    const sortBy = document.getElementById('sortBy').value;
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+    // Filter out completed games and apply search
+    let games = allGames.filter(g => g.locked > 0);
+
+    if (searchTerm) {
+        games = games.filter(g => g.name.toLowerCase().includes(searchTerm));
+    }
+
+    // Sort games
+    switch (sortBy) {
+        case 'locked_asc':
+            games.sort((a, b) => a.locked - b.locked);
+            break;
+        case 'locked_desc':
+            games.sort((a, b) => b.locked - a.locked);
+            break;
+        case 'percent_desc':
+            games.sort((a, b) => b.completion_percent - a.completion_percent);
+            break;
+        case 'percent_asc':
+            games.sort((a, b) => a.completion_percent - b.completion_percent);
+            break;
+        case 'name_asc':
+            games.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+    }
+
+    if (games.length === 0) {
+        gamesEl.innerHTML = '';
+        noGamesEl.style.display = 'block';
+        return;
+    }
+
+    noGamesEl.style.display = 'none';
+    gamesEl.innerHTML = games.map(game => createGameCard(game)).join('');
+}
+
+function createGameCard(game) {
+    return `
+        <div class="game-progress-card" onclick="window.location.href='/achievements/${game.app_id}'">
+            <div class="game-header">
+                <img src="${game.header_image}" alt="${game.name}" class="game-image"
+                     onerror="this.src='https://via.placeholder.com/184x69/1b2838/66c0f4?text=No+Image'">
+                <div class="game-info">
+                    <div class="game-name">${game.name}</div>
+                    <div class="achievement-stats">
+                        <span class="locked-count">${game.locked} left</span>
+                        <span><i class="fas fa-trophy"></i> ${game.unlocked}/${game.total}</span>
+                        <span><i class="fas fa-percentage"></i> ${game.completion_percent}%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${game.completion_percent}%"></div>
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

@@ -107,6 +107,17 @@ window.addEventListener('error', function(event) {
     console.error('Global error:', event.error);
 });
 
+// Rescan library function (global, available on all pages)
+function rescanLibrary() {
+    // Confirm rescan
+    if (!confirm('This will rescan your entire Steam library. This may take a few minutes. Continue?')) {
+        return;
+    }
+
+    // Redirect to dedicated scanning page
+    window.location.href = '/scanning';
+}
+
 // Console welcome message
 console.log('%cSteamAchieve', 'font-size: 24px; font-weight: bold; color: #66c0f4;');
 console.log('%cTrack your Steam achievements!', 'font-size: 14px; color: #c7d5e0;');

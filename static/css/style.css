@@ -123,6 +123,85 @@ body {
     color: var(--steam-muted);
 }
 
+/* Game Image Container for ribbon positioning */
+.game-image-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.game-image-container img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 460 / 215;
+    object-fit: cover;
+}
+
+/* Completion Ribbon */
+.completion-ribbon {
+    position: absolute;
+    top: 10px;
+    right: -30px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ff8c00 100%);
+    color: #1b2838;
+    padding: 5px 40px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    transform: rotate(45deg);
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.5);
+    z-index: 10;
+}
+
+.completion-ribbon i {
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+}
+
+/* Completed game card styling */
+.game-card.game-completed {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+.game-card.game-completed:hover {
+    border-color: #ffaa00;
+    box-shadow: 0 8px 16px rgba(255, 215, 0, 0.3);
+}
+
+/* Achievement Progress in Game Cards */
+.game-achievements {
+    margin-bottom: 0.5rem;
+}
+
+.achievement-progress-bar {
+    height: 6px;
+    background-color: var(--steam-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.achievement-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #66c0f4, #4a9eda);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.achievement-progress-fill.completed {
+    background: linear-gradient(90deg, #5cb85c, #4cae4c);
+}
+
+.achievement-count {
+    font-size: 0.8rem;
+    color: var(--steam-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.achievement-count i {
+    font-size: 0.75rem;
+}
+
 /* Achievement Cards */
 .achievement-card {
     background-color: var(--steam-primary);
@@ -145,7 +224,44 @@ body {
 }
 
 .achievement-card.unlocked {
+    background-color: rgba(92, 184, 92, 0.15);
     border-left: 4px solid var(--steam-success);
+}
+
+/* Rarity Colors - Yellow to Dark Red gradient (locked only) */
+.achievement-card.locked.rarity-common {
+    background-color: rgba(255, 235, 59, 0.2);
+    border-left: 4px solid #ffeb3b;
+}
+
+.achievement-card.locked.rarity-uncommon {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-left: 4px solid #ffc107;
+}
+
+.achievement-card.locked.rarity-rare {
+    background-color: rgba(255, 152, 0, 0.2);
+    border-left: 4px solid #ff9800;
+}
+
+.achievement-card.locked.rarity-very-rare {
+    background-color: rgba(255, 87, 34, 0.2);
+    border-left: 4px solid #ff5722;
+}
+
+.achievement-card.locked.rarity-ultra-rare {
+    background-color: rgba(211, 47, 47, 0.25);
+    border-left: 4px solid #d32f2f;
+}
+
+.achievement-card.locked.rarity-legendary {
+    background-color: rgba(120, 0, 0, 0.3);
+    border-left: 4px solid #780000;
+}
+
+.achievement-card.locked.rarity-impossible {
+    background-color: rgba(0, 0, 0, 0.4);
+    border-left: 4px solid #000000;
 }
 
 .achievement-icon {

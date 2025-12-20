@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Scanning Library - SteamAchieve{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scanning-container {
+        max-width: 600px;
+        margin: 100px auto;
+        text-align: center;
+    }
+
+    .scanning-icon {
+        font-size: 4rem;
+        color: #66c0f4;
+        margin-bottom: 2rem;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    .scanning-title {
+        font-size: 1.8rem;
+        color: #c7d5e0;
+        margin-bottom: 1rem;
+    }
+
+    .scanning-subtitle {
+        color: #8f98a0;
+        margin-bottom: 2rem;
+    }
+
+    .progress-container {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .progress {
+        height: 30px;
+        background-color: #2a475e;
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        font-size: 0.9rem;
+        font-weight: bold;
+        line-height: 30px;
+        transition: width 0.3s ease;
+    }
+
+    .scan-stats {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #2a475e;
+    }
+
+    .scan-stat {
+        text-align: center;
+    }
+
+    .scan-stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #66c0f4;
+    }
+
+    .scan-stat-label {
+        font-size: 0.85rem;
+        color: #8f98a0;
+    }
+
+    .current-game {
+        color: #8f98a0;
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        min-height: 1.5em;
+    }
+
+    .error-container {
+        background: rgba(220, 53, 69, 0.1);
+        border: 1px solid #dc3545;
+        border-radius: 10px;
+        padding: 2rem;
+        display: none;
+    }
+
+    .error-container i {
+        font-size: 2rem;
+        color: #dc3545;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scanning-container">
+    <div id="scanningContent">
+        <i class="fas fa-sync-alt fa-spin scanning-icon"></i>
+        <h1 class="scanning-title">Scanning Your Steam Library</h1>
+        <p class="scanning-subtitle">Please wait while we scan your games for achievement data...</p>
+
+        <div class="progress-container">
+            <div class="progress">
+                <div id="scanProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                     role="progressbar" style="width: 0%">0%</div>
+            </div>
+            <p id="scanStatus" class="current-game">Initializing...</p>
+
+            <div class="scan-stats">
+                <div class="scan-stat">
+                    <div class="scan-stat-value" id="scannedCount">0</div>
+                    <div class="scan-stat-label">Games Scanned</div>
+                </div>
+                <div class="scan-stat">
+                    <div class="scan-stat-value" id="totalCount">0</div>
+                    <div class="scan-stat-label">Total Games</div>
+                </div>
+                <div class="scan-stat">
+                    <div class="scan-stat-value" id="lockedCount">0</div>
+                    <div class="scan-stat-label">Locked Achievements</div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-muted">
+            <i class="fas fa-info-circle"></i>
+            This may take a few minutes depending on your library size.
+        </p>
+    </div>
+
+    <div id="errorContainer" class="error-container">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h2>Scan Failed</h2>
+        <p id="errorText" class="text-muted"></p>
+        <button class="btn btn-primary mt-3" onclick="startScan()">
+            <i class="fas fa-redo"></i> Try Again
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3 ms-2">
+            <i class="fas fa-home"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/game_cache.js') }}"></script>
+<script>
+    let totalLockedAchievements = 0;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clear the cache before starting scan
+        GameCache.clear();
+        startScan();
+    });
+
+    function startScan() {
+        const scanningContent = document.getElementById('scanningContent');
+        const errorContainer = document.getElementById('errorContainer');
+        const progressBar = document.getElementById('scanProgress');
+        const scanStatus = document.getElementById('scanStatus');
+        const scannedCount = document.getElementById('scannedCount');
+        const totalCount = document.getElementById('totalCount');
+        const lockedCount = document.getElementById('lockedCount');
+
+        // Reset UI
+        scanningContent.style.display = 'block';
+        errorContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        totalLockedAchievements = 0;
+
+        const eventSource = new EventSource('/api/games-with-progress-stream');
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'start') {
+                totalCount.textContent = data.total;
+                scanStatus.textContent = 'Starting scan...';
+            } else if (data.type === 'progress') {
+                const percent = data.percent;
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = Math.round(percent) + '%';
+                scannedCount.textContent = data.scanned;
+                scanStatus.textContent = `Scanning game ${data.scanned} of ${data.total}...`;
+
+                // Update locked count if provided
+                if (data.total_locked !== undefined) {
+                    lockedCount.textContent = data.total_locked;
+                }
+            } else if (data.type === 'complete') {
+                eventSource.close();
+
+                // Save to cache
+                GameCache.saveGames(data.games);
+
+                // Calculate total locked from games
+                const totalLocked = data.games.reduce((sum, g) => sum + g.locked, 0);
+                lockedCount.textContent = totalLocked;
+
+                // Show completion message briefly
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-success');
+                scanStatus.textContent = 'Scan complete! Redirecting...';
+
+                // Redirect to dashboard after a short delay
+                setTimeout(function() {
+                    window.location.href = '/dashboard';
+                }, 1500);
+            } else if (data.type === 'error') {
+                eventSource.close();
+                showError(data.error || 'An error occurred during scanning');
+            }
+        };
+
+        eventSource.onerror = function() {
+            eventSource.close();
+            showError('Connection to server lost. Please try again.');
+        };
+    }
+
+    function showError(message) {
+        document.getElementById('scanningContent').style.display = 'none';
+        document.getElementById('errorContainer').style.display = 'block';
+        document.getElementById('errorText').textContent = message;
+    }
+</script>
+{% endblock %}

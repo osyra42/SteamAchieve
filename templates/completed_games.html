@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Completed Games - SteamAchieve{% endblock %}
+
+{% block extra_css %}
+<style>
+    .completed-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .stats-card {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .stats-card h3 {
+        color: #5cb85c;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-card p {
+        color: #8f98a0;
+        margin: 0;
+    }
+
+    .completed-game-card {
+        background: #1b2838;
+        border: 2px solid #5cb85c;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .completed-game-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(92, 184, 92, 0.1) 0%, rgba(92, 184, 92, 0.05) 100%);
+        pointer-events: none;
+    }
+
+    .completed-game-card:hover {
+        border-color: #4cae4c;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(92, 184, 92, 0.3);
+    }
+
+    .completed-game-card .game-header {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .completed-game-card .game-image {
+        width: 184px;
+        height: 69px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 1rem;
+    }
+
+    .completed-game-card .game-info {
+        flex-grow: 1;
+    }
+
+    .completed-game-card .game-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #c7d5e0;
+        margin-bottom: 0.5rem;
+    }
+
+    .completed-game-card .achievement-stats {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: #8f98a0;
+        font-size: 0.9rem;
+    }
+
+    .completed-badge {
+        background: linear-gradient(135deg, #5cb85c, #4cae4c);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .completed-badge i {
+        font-size: 1.2rem;
+    }
+
+    .sort-controls {
+        background: #1b2838;
+        border: 1px solid #2a475e;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .trophy-icon {
+        font-size: 3rem;
+        color: #ffd700;
+        margin-right: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="completed-header">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-trophy trophy-icon"></i>
+            <div>
+                <h1><i class="fas fa-medal"></i> Completed Games</h1>
+                <p class="mb-0">Your 100% achievement completion hall of fame!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loadingGames" class="text-center py-5">
+        <div class="spinner-border text-success mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-light mb-2">Loading your completed games...</p>
+    </div>
+
+    <!-- Error message -->
+    <div id="errorMessage" class="alert alert-danger" role="alert" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="errorText"></span>
+    </div>
+
+    <!-- Stats Section -->
+    <div id="statsSection" class="row mb-4" style="display: none;">
+        <div class="col-md-4 mb-3">
+            <div class="stats-card">
+                <h3 id="completedCount">0</h3>
+                <p>Games 100% Completed</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stats-card">
+                <h3 id="totalAchievements">0</h3>
+                <p>Total Achievements Earned</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stats-card">
+                <h3 id="completionRate">0%</h3>
+                <p>Overall Completion Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sort Controls -->
+    <div id="sortControls" class="sort-controls" style="display: none;">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <label class="form-label text-light">Sort By</label>
+                <select id="sortBy" class="form-select bg-dark text-light border-secondary">
+                    <option value="achievements_desc">Most Achievements First</option>
+                    <option value="achievements_asc">Fewest Achievements First</option>
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-light">Search</label>
+                <input type="text" id="searchInput" class="form-control bg-dark text-light border-secondary"
+                       placeholder="Search games...">
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('locked_achievements_page') }}" class="btn btn-primary mt-4">
+                    <i class="fas fa-crosshairs"></i> Back to Achievement Hunter
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Games List -->
+    <div id="gamesList">
+        <!-- Games will be loaded here dynamically -->
+    </div>
+
+    <!-- No games message -->
+    <div id="noGames" class="alert alert-warning" style="display: none;">
+        <i class="fas fa-info-circle"></i> No 100% completed games yet. Keep hunting those achievements!
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/game_cache.js') }}"></script>
+<script>
+let allGames = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadGames();
+
+    document.getElementById('sortBy').addEventListener('change', renderGames);
+    document.getElementById('searchInput').addEventListener('input', renderGames);
+});
+
+function loadGames() {
+    // Check for cached data first
+    if (GameCache.isValid()) {
+        allGames = GameCache.getCompletedGames();
+        displayGamesFromCache();
+    } else {
+        // No cache, redirect to scanning page
+        window.location.href = '/scanning';
+    }
+}
+
+function displayGamesFromCache() {
+    const loadingEl = document.getElementById('loadingGames');
+    const statsEl = document.getElementById('statsSection');
+    const sortEl = document.getElementById('sortControls');
+    const noGamesEl = document.getElementById('noGames');
+
+    loadingEl.style.display = 'none';
+
+    const stats = GameCache.getStats();
+    const totalAchievementsInCompleted = allGames.reduce((sum, g) => sum + g.total, 0);
+
+    // Update stats
+    document.getElementById('completedCount').textContent = stats.completedGames;
+    document.getElementById('totalAchievements').textContent = totalAchievementsInCompleted;
+    document.getElementById('completionRate').textContent = stats.completionRate + '%';
+
+    statsEl.style.display = 'flex';
+    sortEl.style.display = 'block';
+
+    if (allGames.length === 0) {
+        noGamesEl.style.display = 'block';
+    } else {
+        renderGames();
+    }
+}
+
+function renderGames() {
+    const gamesEl = document.getElementById('gamesList');
+    const noGamesEl = document.getElementById('noGames');
+    const sortBy = document.getElementById('sortBy').value;
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+    let games = [...allGames];
+
+    if (searchTerm) {
+        games = games.filter(g => g.name.toLowerCase().includes(searchTerm));
+    }
+
+    // Sort games
+    switch (sortBy) {
+        case 'achievements_desc':
+            games.sort((a, b) => b.total - a.total);
+            break;
+        case 'achievements_asc':
+            games.sort((a, b) => a.total - b.total);
+            break;
+        case 'name_asc':
+            games.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+        case 'name_desc':
+            games.sort((a, b) => b.name.localeCompare(a.name));
+            break;
+    }
+
+    if (games.length === 0) {
+        gamesEl.innerHTML = '';
+        noGamesEl.style.display = 'block';
+        return;
+    }
+
+    noGamesEl.style.display = 'none';
+    gamesEl.innerHTML = games.map(game => createGameCard(game)).join('');
+}
+
+function createGameCard(game) {
+    return `
+        <div class="completed-game-card" onclick="window.location.href='/achievements/${game.app_id}'">
+            <div class="game-header">
+                <img src="${game.header_image}" alt="${game.name}" class="game-image"
+                     onerror="this.src='https://via.placeholder.com/184x69/1b2838/5cb85c?text=No+Image'">
+                <div class="game-info">
+                    <div class="game-name">${game.name}</div>
+                    <div class="achievement-stats">
+                        <span><i class="fas fa-trophy"></i> ${game.total} Achievements</span>
+                    </div>
+                </div>
+                <div class="completed-badge">
+                    <i class="fas fa-check-circle"></i>
+                    100%
+                </div>
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

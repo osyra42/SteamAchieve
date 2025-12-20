@@ -2,6 +2,7 @@
 
 let allGames = [];
 let filteredGames = [];
+let cachedAchievementData = {};
 
 async function loadGames() {
     const loadingEl = document.getElementById('loadingGames');
@@ -13,6 +14,19 @@ async function loadGames() {
         hideError('errorMessage');
         showElement('loadingGames');
         hideElement('noGames');
+
+        // Load cached achievement data if available
+        if (typeof GameCache !== 'undefined' && GameCache.isValid()) {
+            const cachedGames = GameCache.getGames() || [];
+            cachedGames.forEach(game => {
+                cachedAchievementData[game.app_id] = {
+                    total: game.total,
+                    unlocked: game.unlocked,
+                    locked: game.locked,
+                    completion_percent: game.completion_percent
+                };
+            });
+        }
 
         const data = await fetchAPI('/api/games');
 
@@ -72,6 +86,11 @@ function createGameCard(game) {
     const playtime2Weeks = game.playtime_2weeks || 0;
     const lastPlayed = game.last_played || 0;
 
+    // Get achievement data from cache
+    const achievementData = cachedAchievementData[appId];
+    const hasAchievements = achievementData && achievementData.total > 0;
+    const isCompleted = hasAchievements && achievementData.unlocked === achievementData.total;
+
     // Use new CDN image URLs with fallbacks
     let gameImageUrl;
     if (game.images && game.images.header) {
@@ -84,13 +103,40 @@ function createGameCard(game) {
     }
 
     const card = document.createElement('div');
-    card.className = 'game-card';
+    card.className = 'game-card' + (isCompleted ? ' game-completed' : '');
     card.onclick = () => viewAchievements(appId);
 
+    // Build achievement progress HTML
+    let achievementHtml = '';
+    if (hasAchievements) {
+        const percent = achievementData.completion_percent;
+        achievementHtml = `
+            <div class="game-achievements">
+                <div class="achievement-progress-bar">
+                    <div class="achievement-progress-fill ${isCompleted ? 'completed' : ''}" style="width: ${percent}%"></div>
+                </div>
+                <div class="achievement-count ${isCompleted ? 'text-success' : ''}">
+                    <i class="fas fa-trophy"></i> ${achievementData.unlocked}/${achievementData.total}
+                </div>
+            </div>
+        `;
+    }
+
+    // Completed ribbon
+    const ribbonHtml = isCompleted ? `
+        <div class="completion-ribbon">
+            <i class="fas fa-award"></i>
+        </div>
+    ` : '';
+
     card.innerHTML = `
-        <img src="${gameImageUrl}" alt="${gameName}" onerror="this.src='https://via.placeholder.com/460x215/1b2838/66c0f4?text=${encodeURIComponent(gameName)}'">
+        <div class="game-image-container">
+            <img src="${gameImageUrl}" alt="${gameName}" onerror="this.src='https://via.placeholder.com/460x215/1b2838/66c0f4?text=${encodeURIComponent(gameName)}'">
+            ${ribbonHtml}
+        </div>
         <div class="card-body">
             <h5 class="card-title" title="${gameName}">${gameName}</h5>
+            ${achievementHtml}
             <div class="game-playtime">
                 <i class="fas fa-clock"></i> ${formatPlaytime(playtimeForever)}
                 ${playtime2Weeks > 0 ? `<span class="text-success">(+${formatPlaytime(playtime2Weeks)} recently)</span>` : ''}

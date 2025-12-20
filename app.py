@@ -1,4 +1,5 @@
-from flask import Flask, render_template, redirect, url_for, jsonify, request, session
+from flask import Flask, render_template, redirect, url_for, jsonify, request, session, Response
+import json
 from datetime import timedelta
 from config import Config
 from database import db
@@ -95,10 +96,28 @@ def achievements(app_id):
 @app.route('/achievement-hunter')
 @require_login
 def locked_achievements_page():
-    """Achievement hunter page - discover locked achievements with guides"""
+    """Achievement hunter page - games sorted by achievements left to 100%"""
     steam_id = get_current_user()
     user = db.get_user(steam_id)
-    return render_template('locked_achievements.html', user=user)
+    return render_template('achievement_hunter.html', user=user)
+
+
+@app.route('/completed-games')
+@require_login
+def completed_games_page():
+    """Completed games page - games with 100% achievements"""
+    steam_id = get_current_user()
+    user = db.get_user(steam_id)
+    return render_template('completed_games.html', user=user)
+
+
+@app.route('/scanning')
+@require_login
+def scanning_page():
+    """Scanning page - shows progress while scanning Steam library"""
+    steam_id = get_current_user()
+    user = db.get_user(steam_id)
+    return render_template('scanning.html', user=user)
 
 
 # API Routes
@@ -250,6 +269,121 @@ def api_cached_guides():
         return jsonify({
             'success': True,
             'guides': guides or []
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/games-with-progress-stream')
+@require_login
+def api_games_with_progress_stream():
+    """Stream games with achievement progress using Server-Sent Events"""
+    steam_id = get_current_user()
+
+    def generate():
+        try:
+            # Get user's games
+            games = steam_api.get_owned_games(steam_id)
+
+            if not games:
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Failed to fetch games'})}\n\n"
+                return
+
+            # Scan all games to ensure we find all completed games
+            total_to_scan = len(games)
+            games_progress = []
+            total_locked = 0
+
+            # Send initial count
+            yield f"data: {json.dumps({'type': 'start', 'total': total_to_scan})}\n\n"
+
+            for idx, game in enumerate(games):
+                app_id = game.get('appid')
+                game_name = game.get('name')
+
+                # Use fast stats-only method
+                stats = steam_api.get_achievement_stats_only(steam_id, app_id)
+
+                if stats and stats.get('total', 0) > 0:
+                    game_data = {
+                        'app_id': app_id,
+                        'name': game_name,
+                        'total': stats['total'],
+                        'unlocked': stats['unlocked'],
+                        'locked': stats['locked'],
+                        'completion_percent': stats['completion_percent'],
+                        'header_image': f"https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}/header.jpg",
+                        'playtime_forever': game.get('playtime_forever', 0)
+                    }
+                    games_progress.append(game_data)
+                    total_locked += stats['locked']
+
+                # Send progress update every game
+                progress = {
+                    'type': 'progress',
+                    'scanned': idx + 1,
+                    'total': total_to_scan,
+                    'percent': round((idx + 1) / total_to_scan * 100, 1),
+                    'total_locked': total_locked
+                }
+                yield f"data: {json.dumps(progress)}\n\n"
+
+            # Send final result
+            yield f"data: {json.dumps({'type': 'complete', 'games': games_progress, 'total_games': len(games_progress)})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return Response(generate(), mimetype='text/event-stream')
+
+
+@app.route('/api/games-with-progress')
+@require_login
+def api_games_with_progress():
+    """Get all games with achievement progress stats (fast, single API call per game)"""
+    steam_id = get_current_user()
+
+    try:
+        # Get user's games
+        games = steam_api.get_owned_games(steam_id)
+
+        if not games:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch games'
+            }), 400
+
+        games_progress = []
+        # Default to scanning all games, can be limited via query param
+        max_games = request.args.get('max_games', 0, type=int)
+
+        for game in (games[:max_games] if max_games > 0 else games):
+            app_id = game.get('appid')
+            game_name = game.get('name')
+
+            # Use fast stats-only method (single API call instead of 3)
+            stats = steam_api.get_achievement_stats_only(steam_id, app_id)
+
+            if stats and stats.get('total', 0) > 0:
+                games_progress.append({
+                    'app_id': app_id,
+                    'name': game_name,
+                    'total': stats['total'],
+                    'unlocked': stats['unlocked'],
+                    'locked': stats['locked'],
+                    'completion_percent': stats['completion_percent'],
+                    'header_image': f"https://cdn.cloudflare.steamstatic.com/steam/apps/{app_id}/header.jpg",
+                    'playtime_forever': game.get('playtime_forever', 0)
+                })
+
+        return jsonify({
+            'success': True,
+            'games': games_progress,
+            'total_games': len(games_progress)
         })
 
     except Exception as e:

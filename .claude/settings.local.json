@@ -3,7 +3,8 @@
     "allow": [
       "Bash(flask:*)",
       "Bash(python database.py:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
