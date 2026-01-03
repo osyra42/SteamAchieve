@@ -137,16 +137,20 @@ function createAchievementCard(achievement) {
     const rarityClass = getRarityClass(globalPercent);
     card.classList.add(rarityClass);
 
-    // Handle hidden achievements
+    // Handle hidden achievements - show lock icon but still display description if available
     let description = achievement.description;
+    let hiddenBadge = '';
+    if (achievement.hidden && !achievement.achieved) {
+        hiddenBadge = '<span class="badge bg-secondary me-2"><i class="fas fa-eye-slash"></i> Hidden</span>';
+    }
     if (!description || description.trim() === '') {
-        description = achievement.hidden ? '🔒 Hidden achievement' : 'No description';
+        description = achievement.hidden ? 'Hidden achievement - description not available' : 'No description';
     }
 
     card.innerHTML = `
         <img src="${iconUrl}" alt="${achievement.name}" class="achievement-icon ${!achievement.achieved ? 'grayscale' : ''}">
         <div class="achievement-content">
-            <div class="achievement-title">${achievement.name}</div>
+            <div class="achievement-title">${hiddenBadge}${achievement.name}</div>
             <div class="achievement-description">${description}</div>
             <div class="achievement-meta">
                 <span class="global-percent">

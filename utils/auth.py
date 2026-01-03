@@ -104,11 +104,14 @@ def logout_user():
 def require_login(f):
     """Decorator to require login for routes"""
     from functools import wraps
-    from flask import redirect, url_for
+    from flask import redirect, url_for, jsonify
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not is_user_logged_in():
+            # For API routes, return JSON error instead of redirect
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'error': 'Not logged in'}), 401
             return redirect(url_for('index'))
         return f(*args, **kwargs)
 
