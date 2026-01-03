@@ -43,6 +43,52 @@ class SteamAPI:
             return data['response']['players']
         return None
 
+    def resolve_vanity_url(self, vanity_name):
+        """Resolve a Steam vanity URL to a Steam ID"""
+        endpoint = 'ISteamUser/ResolveVanityURL/v1/'
+        params = {'vanityurl': vanity_name}
+
+        data = self._make_request(endpoint, params)
+        if data and 'response' in data:
+            response = data['response']
+            if response.get('success') == 1:
+                return response.get('steamid')
+        return None
+
+    def resolve_profile_url(self, profile_url):
+        """
+        Resolve a Steam profile URL to a Steam ID.
+        Supports:
+        - https://steamcommunity.com/id/vanityname
+        - https://steamcommunity.com/profiles/76561198012345678
+        - Just the vanity name or Steam ID directly
+        """
+        import re
+
+        profile_url = profile_url.strip()
+
+        # Check if it's already a Steam ID (17-digit number)
+        if re.match(r'^\d{17}$', profile_url):
+            return profile_url
+
+        # Extract from full URL
+        # Match /profiles/STEAMID64
+        profiles_match = re.search(r'steamcommunity\.com/profiles/(\d{17})', profile_url)
+        if profiles_match:
+            return profiles_match.group(1)
+
+        # Match /id/vanityname
+        vanity_match = re.search(r'steamcommunity\.com/id/([^/\s?]+)', profile_url)
+        if vanity_match:
+            vanity_name = vanity_match.group(1)
+            return self.resolve_vanity_url(vanity_name)
+
+        # Assume it's just a vanity name
+        if re.match(r'^[a-zA-Z0-9_-]+$', profile_url):
+            return self.resolve_vanity_url(profile_url)
+
+        return None
+
     def get_owned_games(self, steam_id, include_appinfo=True, include_played_free_games=True):
         """Get user's owned games"""
         endpoint = 'IPlayerService/GetOwnedGames/v1/'

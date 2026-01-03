@@ -75,6 +75,49 @@ def auth_logout():
     return redirect(url_for('index'))
 
 
+@app.route('/auth/profile', methods=['POST'])
+def auth_profile():
+    """Login via Steam profile URL"""
+    profile_input = request.form.get('profile_url', '').strip()
+
+    if not profile_input:
+        return render_template('index.html', error='Please enter a Steam profile URL or username')
+
+    # Resolve the profile URL to a Steam ID
+    steam_id = steam_api.resolve_profile_url(profile_input)
+
+    if not steam_id:
+        return render_template('index.html', error='Could not find Steam profile. Check the URL or username.')
+
+    # Verify the profile exists and is accessible
+    players = steam_api.get_player_summaries(steam_id)
+    if not players or len(players) == 0:
+        return render_template('index.html', error='Steam profile not found or is private.')
+
+    player = players[0]
+
+    # Check if game details are public by trying to fetch games
+    games = steam_api.get_owned_games(steam_id)
+    if games is None:
+        return render_template('index.html', error='Game library is private. Please set your game details to public in Steam privacy settings.')
+
+    # Login user
+    login_user(steam_id)
+
+    # Store user profile
+    try:
+        db.upsert_user(
+            steam_id=steam_id,
+            persona_name=player.get('personaname'),
+            profile_url=player.get('profileurl'),
+            avatar_url=player.get('avatarfull')
+        )
+    except Exception as e:
+        print(f"Failed to store user profile: {e}")
+
+    return redirect(url_for('dashboard'))
+
+
 @app.route('/dashboard')
 @require_login
 def dashboard():

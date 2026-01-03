@@ -2,6 +2,41 @@
 
 {% block title %}SteamAchieve - Login{% endblock %}
 
+{% block extra_css %}
+<style>
+    .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 1.5rem 0;
+        color: var(--steam-muted);
+    }
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--steam-tertiary);
+    }
+    .divider span {
+        padding: 0 1rem;
+    }
+    .profile-input-group {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    .profile-input-group .form-control {
+        border-radius: 8px 0 0 8px;
+    }
+    .profile-input-group .btn {
+        border-radius: 0 8px 8px 0;
+    }
+    .example-text {
+        font-size: 0.8rem;
+        color: var(--steam-muted);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="row justify-content-center mt-5">
@@ -20,7 +55,26 @@
                     </div>
                     {% endif %}
 
-                    <a href="{{ url_for('auth_login') }}" class="btn btn-steam btn-lg">
+                    <!-- Profile URL Login -->
+                    <form action="{{ url_for('auth_profile') }}" method="POST" class="mb-3">
+                        <div class="profile-input-group input-group">
+                            <input type="text" name="profile_url" class="form-control"
+                                   placeholder="Steam profile URL or username"
+                                   aria-label="Steam profile URL">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-sign-in-alt"></i> Go
+                            </button>
+                        </div>
+                        <p class="example-text mt-2">
+                            e.g., <code>steamcommunity.com/id/username</code> or just <code>username</code>
+                        </p>
+                    </form>
+
+                    <div class="divider">
+                        <span>or</span>
+                    </div>
+
+                    <a href="{{ url_for('auth_login') }}" class="btn btn-steam">
                         <i class="fab fa-steam"></i> Sign in with Steam
                     </a>
 
@@ -36,6 +90,11 @@
                                 <p><i class="fas fa-check text-success"></i> Sort locked achievements first</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="alert alert-info mt-4" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Your Steam profile and game details must be set to <strong>public</strong> for this to work.
                     </div>
                 </div>
             </div>

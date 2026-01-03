@@ -4,7 +4,8 @@
       "Bash(flask:*)",
       "Bash(python database.py:*)",
       "Bash(python -c:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(dir /b \"e:\\\\@Playground\\\\SteamAchieve\\\\*.py\")"
     ],
     "deny": [],
     "ask": []

@@ -1,29 +1,60 @@
 /**
  * Game Cache Module - Manages localStorage caching for game achievement data
+ * Cache is per-user (keyed by Steam ID)
  */
 
 const GameCache = {
-    CACHE_KEY: 'steamachieve_games_cache',
-    CACHE_TIMESTAMP_KEY: 'steamachieve_cache_timestamp',
-    CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    CACHE_PREFIX: 'steamachieve_games_',
+    CURRENT_USER_KEY: 'steamachieve_current_user',
 
     /**
-     * Get cached games data
-     * @returns {Array|null} Cached games array or null if not found/expired
+     * Get the current user's Steam ID from the page or storage
+     * @returns {string|null}
+     */
+    getCurrentUser: function() {
+        // Try to get from a data attribute on body (set by template)
+        const body = document.body;
+        if (body && body.dataset.steamId) {
+            return body.dataset.steamId;
+        }
+        // Fallback to stored current user
+        return localStorage.getItem(this.CURRENT_USER_KEY);
+    },
+
+    /**
+     * Set the current user's Steam ID
+     * @param {string} steamId
+     */
+    setCurrentUser: function(steamId) {
+        if (steamId) {
+            localStorage.setItem(this.CURRENT_USER_KEY, steamId);
+        }
+    },
+
+    /**
+     * Get cache key for current user
+     * @returns {string}
+     */
+    getCacheKey: function() {
+        const steamId = this.getCurrentUser();
+        return steamId ? `${this.CACHE_PREFIX}${steamId}` : `${this.CACHE_PREFIX}default`;
+    },
+
+    /**
+     * Get timestamp key for current user
+     * @returns {string}
+     */
+    getTimestampKey: function() {
+        return `${this.getCacheKey()}_timestamp`;
+    },
+
+    /**
+     * Get cached games data for current user
+     * @returns {Array|null} Cached games array or null if not found
      */
     getGames: function() {
         try {
-            const timestamp = localStorage.getItem(this.CACHE_TIMESTAMP_KEY);
-            if (!timestamp) return null;
-
-            // Check if cache is expired
-            const age = Date.now() - parseInt(timestamp);
-            if (age > this.CACHE_DURATION) {
-                this.clear();
-                return null;
-            }
-
-            const data = localStorage.getItem(this.CACHE_KEY);
+            const data = localStorage.getItem(this.getCacheKey());
             return data ? JSON.parse(data) : null;
         } catch (e) {
             console.error('Error reading game cache:', e);
@@ -32,20 +63,20 @@ const GameCache = {
     },
 
     /**
-     * Save games data to cache
+     * Save games data to cache for current user
      * @param {Array} games - Array of game objects
      */
     saveGames: function(games) {
         try {
-            localStorage.setItem(this.CACHE_KEY, JSON.stringify(games));
-            localStorage.setItem(this.CACHE_TIMESTAMP_KEY, Date.now().toString());
+            localStorage.setItem(this.getCacheKey(), JSON.stringify(games));
+            localStorage.setItem(this.getTimestampKey(), Date.now().toString());
         } catch (e) {
             console.error('Error saving game cache:', e);
         }
     },
 
     /**
-     * Update a single game in the cache
+     * Update a single game in the cache (does not reset timestamp)
      * @param {Object} gameData - Game object with app_id and stats
      */
     updateGame: function(gameData) {
@@ -59,30 +90,36 @@ const GameCache = {
                 games.push(gameData);
             }
 
-            this.saveGames(games);
+            // Save without updating timestamp (preserve original scan time)
+            localStorage.setItem(this.getCacheKey(), JSON.stringify(games));
         } catch (e) {
             console.error('Error updating game cache:', e);
         }
     },
 
     /**
-     * Clear the cache
+     * Clear cache for current user only
      */
-    clear: function() {
-        localStorage.removeItem(this.CACHE_KEY);
-        localStorage.removeItem(this.CACHE_TIMESTAMP_KEY);
+    clearCurrentUser: function() {
+        localStorage.removeItem(this.getCacheKey());
+        localStorage.removeItem(this.getTimestampKey());
     },
 
     /**
-     * Check if cache exists and is valid
+     * Clear all caches (for all users)
+     */
+    clear: function() {
+        // Only clear current user's cache
+        this.clearCurrentUser();
+    },
+
+    /**
+     * Check if cache exists for current user
      * @returns {boolean}
      */
     isValid: function() {
-        const timestamp = localStorage.getItem(this.CACHE_TIMESTAMP_KEY);
-        if (!timestamp) return false;
-
-        const age = Date.now() - parseInt(timestamp);
-        return age <= this.CACHE_DURATION;
+        const data = localStorage.getItem(this.getCacheKey());
+        return data !== null;
     },
 
     /**
@@ -90,7 +127,7 @@ const GameCache = {
      * @returns {string}
      */
     getCacheAge: function() {
-        const timestamp = localStorage.getItem(this.CACHE_TIMESTAMP_KEY);
+        const timestamp = localStorage.getItem(this.getTimestampKey());
         if (!timestamp) return 'Never';
 
         const age = Date.now() - parseInt(timestamp);

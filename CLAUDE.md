@@ -39,12 +39,14 @@ Get Steam API key from: https://steamcommunity.com/dev/apikey
 **app.py** - Flask routes and request handling
 - Auth routes: `/auth/login`, `/auth/callback`, `/auth/logout`
 - API routes: `/api/games`, `/api/games/<appid>/achievements`, `/api/achievement/guide/*`
+- SSE streaming: `/api/games-with-progress-stream` for library scanning with progress
 - Uses `@require_login` decorator from `utils/auth.py` for protected routes
 
 **steam_api.py** - Steam Web API wrapper (`SteamAPI` class)
 - Fetches games, achievements, player data from Steam API
 - `get_achievements_for_game()` merges player achievements with schema and global stats
-- `sort_achievements_locked_first()` - core sorting logic (locked by rarity, unlocked by time)
+- `get_achievement_stats_only()` - fast single API call for achievement counts
+- `sort_achievements_locked_first()` - core sorting logic (locked by rarity desc, unlocked by time)
 - Global instance: `steam_api`
 
 **database.py** - SQLite operations (`Database` class)
@@ -76,24 +78,36 @@ Get Steam API key from: https://steamcommunity.com/dev/apikey
 - All settings from `.env` file
 - Cache durations, rate limits, session config
 
+### Client-Side Caching
+
+**static/js/game_cache.js** - LocalStorage caching for game achievement data
+- `GameCache` object with 24-hour expiration
+- Stores scanned game stats (total, unlocked, locked, completion_percent)
+- Used by dashboard, achievement_hunter, and completed_games pages
+- `scanGamesWithProgress()` - connects to SSE endpoint for library scanning
+- `rescanSingleGame()` - rescans one game's achievements
+
 ### Data Flow
 
 1. User authenticates via Steam OpenID (`utils/auth.py`)
-2. Games fetched from Steam API, cached in `cached_games` table
-3. Achievements fetched per-game, merged with schema and global stats
-4. Guide searches check cache first, then query DDGS/AI, cache results
+2. First login triggers `/scanning` page which streams progress via SSE
+3. Games fetched from Steam API, stats cached in localStorage
+4. Achievements fetched per-game, merged with schema and global stats
+5. Guide searches check DB cache first, then query DDGS/AI, cache results
 
 ### Key Implementation Details
 
-- **Achievement ordering**: Always locked first (sorted by rarity), then unlocked (sorted by unlock time)
+- **Achievement ordering**: Locked first (sorted by rarity, most common first), then unlocked (sorted by unlock time)
+- **Rarity thresholds**: Common (≥50%), Uncommon (≥25%), Rare (≥10%), Very Rare (≥5%), Ultra Rare (≥1%), Legendary (<1%), Impossible (0%)
 - **Steam IDs**: 64-bit integers stored as strings
 - **Achievement icons**: `http://cdn.steampowered.com/steamcommunity/public/images/apps/{appid}/{icon_hash}.jpg`
 - **Game images**: Various formats from `https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/`
+- **Completed games**: Games where `locked === 0 && total > 0` display gold ribbon badge
 
 ### Frontend
 
-- Templates in `templates/`: `base.html`, `index.html`, `dashboard.html`, `achievements.html`, `locked_achievements.html`
-- JavaScript in `static/js/`: `main.js`, `games.js`, `achievements.js`
+- Templates in `templates/`: `base.html`, `index.html`, `dashboard.html`, `achievements.html`, `achievement_hunter.html`, `completed_games.html`, `scanning.html`
+- JavaScript in `static/js/`: `main.js`, `games.js`, `achievements.js`, `game_cache.js`
 - CSS: `static/css/style.css` (Steam-inspired theme: #171a21 background, #66c0f4 accent)
 
 ### Rate Limits
